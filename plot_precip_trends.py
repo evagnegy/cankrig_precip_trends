@@ -15,16 +15,23 @@ import matplotlib as mpl
 import matplotlib.colors as pltcol
 import pylab as pl
 import matplotlib.colorbar as cb
+import geopandas as gpd
+
+#%%
+
+prov_shapefile = "C:/Users/GnegyE/Downloads/lpr_000b16a_e"
+
+gdf = gpd.read_file(prov_shapefile)
 
 #%% read from netcdf files
 
 #file = 'C:/Users/GnegyE/Desktop/precip_trends/nc_files/precip_trends_1948-2018_cankrig_anomolies.nc'
-#file = 'C:/Users/GnegyE/Desktop/precip_trends/nc_files/precip_trends_1948-2018_cankrig_abs.nc'
-file = 'C:/Users/GnegyE/Desktop/precip_trends/nc_files/precip_trends_1948-2012_cangrd_anomolies.nc'
+file = 'C:/Users/GnegyE/Desktop/precip_trends/nc_files/precip_trends_1948-2018_cankrig_abs.nc'
+#file = 'C:/Users/GnegyE/Desktop/precip_trends/nc_files/precip_trends_1948-2012_cangrd_anomolies.nc'
 
 #update based on cankrig or cangrd
 startyear = 1948
-endyear=2012 #cangrd=2012, cankrig=2018
+endyear=2018 #cangrd=2012, cankrig=2018
 
 
 nc = Dataset(file,'r')
@@ -101,33 +108,39 @@ vmax=lim[1]*100
 extend='both'
 
 def make_perc_plots(data, seas):
+    proj = ccrs.RotatedPole(pole_latitude=42.5,pole_longitude=83)
     fig = plt.figure(figsize=(10,10),dpi=200)
-    ax = fig.add_subplot(1,1,1, projection=ccrs.RotatedPole(pole_latitude=42.5,pole_longitude=83))
+    ax = fig.add_subplot(1,1,1, projection=proj)
     
     
     plt.pcolormesh(lons,lats,data,transform=ccrs.PlateCarree(),cmap=cmap,vmin=vmin,vmax=vmax)
     #plt.scatter(lons,lats,c=precip,s=0.3,transform=ccrs.PlateCarree(),cmap=cmap,vmin=vmin,vmax=vmax)
+
     
+    #states_provinces = cf.NaturalEarthFeature(category='cultural',name='admin_1_states_provinces_lines',scale='50m',facecolor='none')
     
-    states_provinces = cf.NaturalEarthFeature(category='cultural',name='admin_1_states_provinces_lines',scale='50m',facecolor='none')
+    #ax.coastlines(resolution='50m')
+    #ax.add_feature(cf.BORDERS)
+    #ax.add_feature(states_provinces)
     
-    ax.coastlines(resolution='50m')
-    ax.add_feature(cf.BORDERS)
-    ax.add_feature(states_provinces)
-    
-    ax.set_extent([-135,-55,40,85],crs=ccrs.PlateCarree())
+    gdf_reprojected = gdf.to_crs(proj) #convert from the shapefile's EPSG to the projection i am plotting
+    gdf_reprojected.plot(ax=ax,facecolor='none', edgecolor='black', linewidth=0.25, zorder=1)
+
+
+    ax.set_extent([-131,-55,40,85],crs=ccrs.PlateCarree())
     #ax.set_extent([-142,-133,55,65],crs=ccrs.PlateCarree())
     
-    cbar_ax = fig.add_axes([0.2,0.15,0.62,0.02])
+    cbar_ax = fig.add_axes([0.2,0.13,0.62,0.025])
     
     fig.colorbar(mpl.cm.ScalarMappable(cmap=cmap, norm=mpl.colors.Normalize(vmin=vmin, vmax=vmax)),cax=cbar_ax,orientation='horizontal',extend=extend,ticks=ticks*100)
     cbar_ax.tick_params(labelsize=16)
     cbar_ax.set_xlabel('Percentage Change (%)',size=18)
     
-    fig.suptitle('CanGRD ' + str(startyear) +'-' + str(endyear) + ": " + seas + "\n(relative to 1961-1990 mean)",fontsize=20,y=0.88)
+    #fig.suptitle('CanKrig ' + str(startyear) +'-' + str(endyear) + ": " + seas + "\n(relative to 1961-1990 mean)",fontsize=20,y=0.9)
+    fig.suptitle('CanKrig ' + str(startyear) +'-' + str(endyear) + ": " + seas,fontsize=20,y=0.9)
     
     output_dir = '/Users/GnegyE/Desktop/precip_trends/figures/'
-    plt.savefig(output_dir + seas + '_cangrd_anomolies.png',bbox_inches='tight')
+    plt.savefig(output_dir + seas + '_cankrig_rel.png',bbox_inches='tight',dpi=500)
 
 make_perc_plots(ann_precip_trend, "Annual")
 make_perc_plots(djf_precip_trend, "DJF")
