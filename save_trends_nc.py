@@ -135,42 +135,28 @@ cangrd_da_son = load_cangrd("17")
 #%%
 
 def get_trendline(pr):
-    mk_samp = mk.original_test(pr.values)
+    if np.all(np.isnan(pr)) or np.all(pr==0):
+        perc_change = np.nan
+    else:
+        mk_samp = mk.original_test(pr)
+
+        # for absolute trends
+        #x = np.linspace(0,len(pr),len(pr)+1)
+        #trendline = mk_samp.slope * x + mk_samp.intercept
+        #perc_change = (trendline[-1] - trendline[0])/(abs(trendline[0])) * 100
     
-    # for absolute trends
-    #x = np.linspace(0,len(pr.time),len(pr.time)+1)
-    #trendline = mk_samp.slope * x + mk_samp.intercept
-    #perc_change = (trendline[-1] - trendline[0])/(abs(trendline[0])) * 100
-    
-    # for anomolies
-    perc_change = mk_samp.slope * len(pr.time) * 100  
+        # for anomolies
+        perc_change = mk_samp.slope * len(pr) * 100 #len(pr)=years
     
     return perc_change  
 
-#%%
+
+#%% testing apply_ufunc
 
 # pr_da should already be in yearly (seasonal) format (lat,lon,years)
 def get_trends(pr_da):
-    
-    #make empty array to fill
-    perc_change = np.empty(pr_da.lats.shape)
-        
-    for i in range(pr_da.lats.shape[0]):
-        print(str(i) + "/" + str(pr_da.lats.shape[0]))
-        
-        for j in range(pr_da.lats.shape[1]):
-            
-            #all timesteps (of selected range) at one lat/lon point
-            precip_i = pr_da.isel(lats=i,lons=j)
-            
-            #if its out of the canada terrestrial boundary
-            if np.all(np.isnan(precip_i)) or np.all(precip_i==0):
-                perc_change[i,j] = np.nan
-
-            else:
-                perc_change[i, j] = get_trendline(precip_i)
-                          
-    return(perc_change)
+    return xr.apply_ufunc(get_trendline,pr_da,input_core_dims=[["time"]],dask='parallelized',vectorize=True)
+                           
 
 #%% anomolies
 cankrig_perc_change_ann = get_trends(precip_wrt_base)
@@ -182,10 +168,10 @@ cankrig_perc_change_SON = get_trends(precip_wrt_base_SON)
 #%% raw precip
 
 #cankrig_perc_change_ann = get_trends(precip_yr)
-cankrig_perc_change_DJF = get_trends(precip_seas_gr['DJF'])
-cankrig_perc_change_MAM = get_trends(precip_seas_gr['MAM'])
-cankrig_perc_change_JJA = get_trends(precip_seas_gr['JJA'])
-cankrig_perc_change_SON = get_trends(precip_seas_gr['SON'])
+#cankrig_perc_change_DJF = get_trends(precip_seas_gr['DJF'])
+#cankrig_perc_change_MAM = get_trends(precip_seas_gr['MAM'])
+#cankrig_perc_change_JJA = get_trends(precip_seas_gr['JJA'])
+#cankrig_perc_change_SON = get_trends(precip_seas_gr['SON'])
 
 
 #%% cangrd
@@ -199,8 +185,8 @@ cangrd_perc_change_son = get_trends(cangrd_da_son)
 
 #%% save it (cankrig) as a netcdf file
 
-#file = "C:/Users/GnegyE/Desktop/precip_trends/precip_trends_" + str(startyear) + "-" + str(endyear) + "_cankrig_anomolies.nc"
-file = "C:/Users/GnegyE/Desktop/precip_trends/precip_trends_" + str(startyear) + "-" + str(endyear) + "_cankrig_abs.nc"
+file = "C:/Users/GnegyE/Desktop/precip_trends/precip_trends_" + str(startyear) + "-" + str(endyear) + "_cankrig_anomolies.nc"
+#file = "C:/Users/GnegyE/Desktop/precip_trends/precip_trends_" + str(startyear) + "-" + str(endyear) + "_cankrig_abs.nc"
 
 with Dataset(file,'w') as nc_file:
 
